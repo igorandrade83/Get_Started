@@ -1,6 +1,9 @@
 # Introdução
 
 Esta é uma aplicação criada com o CronApp IDE.
+Esta aplicação foi criada para o tutorial Get Started usando o CronApp IDE e pode ser acompanhado através do endereço: https://docs.cronapp.io/display/CRON2/Get+Started
+
+Projeto de um pequeno sistema de reserva de livro para uma biblioteca.
 
 ## Pré-Requisitos
 
