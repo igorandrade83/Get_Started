@@ -1,14 +1,68 @@
 [
-    {
+  {
     "_class": "app.entity.User",
     "id": "304BF43E-0E62-4F4A-8A63-3F22D7AD4611",
     "name": "admin",
     "login": "admin",
-    "password": "$2a$10$LjzpM1Q3VoAtG2dTCCabNuW0/amVPjL3Iyvyi2Dj7NP.HngtzSewu"
+    "email": "admin@email.com",
+    "password": "$2a$10$LjzpM1Q3VoAtG2dTCCabNuW0/amVPjL3Iyvyi2Dj7NP.HngtzSewu",
+    "picture": null,
+    "theme": null
   },
   {
     "_class": "app.entity.Role",
     "id": "Administrators",
     "user": { "id" : "304BF43E-0E62-4F4A-8A63-3F22D7AD4611" }
+  },
+  {
+    "_class": "app.entity.User",
+    "id": "E26D88FF-19CB-4DEE-9DDE-1E84657B7EF0",
+    "name": "Joao Souza",
+    "login": "js",
+    "email": "js@email.com",
+    "password": "$2a$10$xYlPWrEPiyorA5tPoQuo7OYEw9RGmG9ZShuUZsSJt.X33k3d0nLhK",
+    "picture": null,
+    "theme": null
+  },
+  {
+    "_class": "app.entity.Role",
+    "id": "Alunos",
+    "user": { "id" : "E26D88FF-19CB-4DEE-9DDE-1E84657B7EF0" }
+  },
+  {
+    "_class": "app.entity.User",
+    "id": "0FCBDBD2-D047-4D4B-AE6A-F1DCE0DBE05D",
+    "name": "Matheus Souza Mattos",
+    "login": "msm",
+    "email": "msm@email.com",
+    "password": "$2a$10$46/ZKyOBrE8TZR6C198uEOb7Abx3ul15nqavKkfXIOnYDb.Rt.0d6",
+    "picture": null,
+    "theme": null
+  },
+  {
+    "_class": "app.entity.Role",
+    "id": "Alunos",
+    "user": { "id" : "0FCBDBD2-D047-4D4B-AE6A-F1DCE0DBE05D" }
+  },
+  {
+    "_class": "app.entity.Livro",
+    "id": "5E0FF616-2734-4FF4-BE71-624CA59AA7A0",
+	"autor": "Arthur Piauí",
+    "isbn": "9842234",
+  	"nome": "1001 maneiras de fazer macarrão instantâneo"
+  },
+  {
+    "_class": "app.entity.Livro",
+    "id": "4366026B-2418-4FAD-841F-8693CFECF803",
+  	"autor": "Patrícia Sá",
+    "isbn": "45676543",
+  	"nome": "Desenvolva bem usando o Cronapp"
+  },
+  {
+    "_class": "app.entity.Reserva",
+    "id": "42632F68-180F-417E-B977-96BEE85DD2E8",
+  	"data_reserva": "2019-04-02",
+  	"livro": { "id" : "5E0FF616-2734-4FF4-BE71-624CA59AA7A0" },
+  	"user": { "id" : "0FCBDBD2-D047-4D4B-AE6A-F1DCE0DBE05D" }
   }
 ]
