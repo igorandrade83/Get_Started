@@ -57,7 +57,7 @@ public class Reserva implements Serializable {
   @Column(name = "data_reserva", nullable = true, unique = false, insertable=true, updatable=true)
   @CronapiSearchable
   
-  private java.util.Date dataReserva = new Date(System.currentTimeMillis());
+  private java.util.Date dataReserva = Calendar.getInstance().getTime();
 
   /**
   * @generated

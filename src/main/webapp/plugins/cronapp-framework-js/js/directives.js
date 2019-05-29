@@ -380,7 +380,7 @@
         var roles = [];
         var user = JSON.parse(localStorage.getItem('_u'))
         if (user && user.roles) {
-            roles = user.roles.toLowerCase().split(",");
+          roles = user.roles.toLowerCase().split(",");
         }
 
         var perms = parsePermission(attrs.cronappSecurity);
@@ -597,20 +597,38 @@
   })
 
   .filter('mask',function($translate) {
-    return function(value, maskValue) {
+    return function(value, maskValue, type) {
       maskValue = parseMaskType(maskValue, $translate);
       if (!maskValue)
         return value;
 
-      maskValue = maskValue.replace(';1', '').replace(';0', '').trim();
 
-      if (typeof value == "string" && value.match(isoDate)) {
-        return moment.utc(value).format(maskValue);
-      } else if (value instanceof Date) {
-        return moment.utc(value).format(maskValue);
+      var useUTC;
+
+      if (type !== undefined) {
+        useUTC = type == 'date' || type == 'datetime' || type == 'time';
+
+        if (!window.fixedTimeZone) {
+          useUTC = false;
+        }
+      } else {
+        useUTC = window.fixedTimeZone;
+      }
+
+      if (maskValue.indexOf(";local") > 0) {
+        useUTC = false;
+      }
+
+      maskValue = maskValue.replace(';1', '').replace(';0', '').replace(';local', '').trim();
+      if ((typeof value == "string" && value.match(isoDate)) || value instanceof Date) {
+        if (useUTC) {
+          return moment(value).utcOffset(window.timeZoneOffset).format(maskValue);
+        } else {
+          return moment(value).format(maskValue);
+        }
       } else if (typeof value == 'number') {
         return format(maskValue, value);
-      }  else if (value != undefined && value != null && value != "") {
+      }  else if (value != undefined && value != null && value != "" && maskValue != '') {
         var input = $("<input type=\"text\">");
         input.mask(maskValue);
         return input.masked(value);
@@ -621,18 +639,18 @@
   })
 
   .directive('screenParams', [function() {
-      'use strict';
-      return {
-          link: function(scope, elem, attrs, ctrl) {
-              var screenParams = eval(attrs.screenParams);
-              if (screenParams && screenParams.length) {
-                  screenParams.forEach(function(screenParam) {
-                      if (scope.params && !scope.params[screenParam.key])
-                          scope.params[screenParam.key] = screenParam.value || '';
-                  });
-              }
-          }
+    'use strict';
+    return {
+      link: function(scope, elem, attrs, ctrl) {
+        var screenParams = eval(attrs.screenParams);
+        if (screenParams && screenParams.length) {
+          screenParams.forEach(function(screenParam) {
+            if (scope.params && !scope.params[screenParam.key])
+              scope.params[screenParam.key] = screenParam.value || '';
+          });
+        }
       }
+    }
   }])
 
   .directive('mask', maskDirectiveMask)
@@ -1501,15 +1519,18 @@
             $input.appendTo(container);
 
             var waitRender = setInterval(function() {
-              if ($('#' + buttonId).length > 0) {
-                $('#' + buttonId ).off('change');
-                $('#' + buttonId ).on('change', function() {
-                  opt.model[opt.field] = $('#' + buttonId ).data('rawvalue');
+              let myElement = $('#' + buttonId);
+              if (myElement.length > 0) {
+                myElement.off('change');
+                myElement.on('change', function() {
+                  let rawValue = myElement.data('rawvalue');
+                  let value = myElement.val();
+                  opt.model[opt.field] = rawValue || value;
                   opt.model.dirty = true;
                   opt.model.dirtyFields[opt.field] = true;
                 });
 
-                var x = angular.element($('#' + buttonId ));
+                var x = angular.element(myElement);
                 $compile(x)(scope);
                 clearInterval(waitRender);
               }
@@ -1838,7 +1859,7 @@
                 }
                 var button = this.generateToolbarButtonCall(toolbarButton, scope, options);
                 toolbar.push(button);
-                
+
                 if (!options.hideModalButtons) {
                   this.addButtonsInModal(popupInsert, datasourceName, scope);
                 }
@@ -2115,8 +2136,8 @@
                 cronappDatasource.startEditing(currentItem, function(xxx) {});
               });
             }
-            
-            if (attrs && attrs.ngEdit) { 
+
+            if (attrs && attrs.ngEdit) {
               scope.$eval(attrs.ngEdit);
             }
 
@@ -2130,19 +2151,19 @@
               ngModelCtrl.$setViewValue(cronappDatasource.active);
             }
             collapseAllExcecptCurrent(this, this.select().next(), this.select());
-            
-            if (attrs && attrs.ngChange) { 
+
+            if (attrs && attrs.ngChange) {
               scope.$eval(attrs.ngChange);
             }
 
-            compileListing(e);            
+            compileListing(e);
           },
           cancel: function(e) {
             var cronappDatasource = this.dataSource.transport.options.cronappDatasource;
             scope.safeApply(cronappDatasource.cancel());
             this.dataSource.transport.options.enableAndSelect(e);
             setTimeout(function() {
-              if (attrs && attrs.ngCancel) { 
+              if (attrs && attrs.ngCancel) {
                 scope.$eval(attrs.ngCancel);
               }
 
@@ -2151,8 +2172,8 @@
           },
           dataBound: function(e) {
             this.dataSource.transport.options.selectActiveInGrid();
-            
-            if (attrs && attrs.ngDataBound) { 
+
+            if (attrs && attrs.ngDataBound) {
               scope.$eval(attrs.ngDataBound);
             }
 
@@ -2443,7 +2464,11 @@
            */
           options.virtual.valueMapper = function(options) {
             var _combobox = _options.combobox;
-            if (options.value) {
+            if (options.value || options.value === "") {
+              if(_combobox.options.optionLabel[_combobox.options.dataValueField] !== null && options.value === ""){
+                options.success(null);
+              }
+              else{
               _combobox.isEvaluating = true;
               var _dataSource = _options.dataSource.transport.options.cronappDatasource;
               _dataSource.findObj([options.value], false, function(data) {
@@ -2472,6 +2497,7 @@
                 options.success(null);
                 _combobox.isEvaluating = false;
               });
+              }
             } else {
               options.success(null);
             }
@@ -2694,11 +2720,15 @@
     };
   })
 
-  .directive('cronMultiSelect', function ($compile) {
+  .directive('cronMultiSelect', function ($compile, $parse) {
     return {
       restrict: 'E',
       require: 'ngModel',
       link: function (scope, element, attrs, ngModelCtrl) {
+        var modelGetter = $parse(attrs['ngModel']);
+        var modelSetter = modelGetter.assign;
+        var model = attrs['ngModel'];
+
         var _self = this;
         var select = {};
         try {
@@ -2750,24 +2780,51 @@
               $(combobox).data('silent', true);
               this.relationDataSource.removeSilent(selectItem, null, null);
             }
-
-            if (deselect) {
-              deselect();
+          } else {
+            if (model) {
+              _scope.$apply(function () {
+                try {
+                  var data = eval('_scope.' + model);
+                  data = data.filter(it => it[dataValueField] !== dataItem[dataValueField]);
+                  $(combobox).data('silent', true);
+                  modelSetter(_scope, data);
+                } catch (e) {}
+              });
             }
           }
+
+          if (deselect) {
+            deselect();
+          }
+
         }.bind(relactionDS);
 
         options['select'] = function(e) {
           var dataItem = e.dataItem;
           var dataValueField = e.sender.options.dataValueField;
+          var combobox = e.sender;
+
           if (this.relationDataSource && dataItem[dataValueField]) {
             var obj = {};
             obj[this.relationField] = dataItem[dataValueField];
-            var combobox = e.sender;
             $(combobox).data('silent', true);
             this.relationDataSource.startInserting(obj, function(data){
               this.postSilent();
             }.bind(this.relationDataSource));
+          } else {
+            if (model) {
+              _scope.$apply(function () {
+                try {
+                  var data = eval('_scope.' + model);
+                  if (!data) {
+                    data = [];
+                  }
+                  data.push(objectClone(dataItem, combobox.dataSource.options.schema.model.fields));
+                  $(combobox).data('silent', true);
+                  modelSetter(_scope, data);
+                } catch(e) {}
+              });
+            }
           }
 
           if (evtSelect) {
@@ -2801,7 +2858,11 @@
           var silent = $(combobox).data('silent');
           $(combobox).data('silent', false);
           if (!silent && (JSON.stringify(value) !== JSON.stringify(old))) {
-            combobox.value(convertArray(value));
+            if (relactionDS.relationDataSource && relactionDS.relationField) {
+              combobox.value(convertArray(value));
+            } else {
+              combobox.value(value);
+            }
           }
         });
       }
@@ -2837,7 +2898,7 @@
         var required = '';
         if (attrs.ngRequired || attrs.required) {
           required = ' required ';
-        }        
+        }
         $(parent).append('<input style="width: 100%;" ' + id + name + required + ' class="cronAutoComplete" ng-model="' + attrs.ngModel + '"/>');
         var $element = $(parent).find('input.cronAutoComplete');
         $(element).remove();
@@ -2897,6 +2958,10 @@
 
         var useUTC = options.type == 'date' || options.type == 'datetime' || options.type == 'time';
 
+        if (!window.fixedTimeZone) {
+          useUTC = false;
+        }
+
         var $element = $(element);
         if ($element.data('alreadycompiled'))
           return;
@@ -2928,7 +2993,7 @@
             }
 
             if (useUTC) {
-              momentDate = moment.utc(valueDate, options.momentFormat);
+              momentDate = moment(valueDate, options.momentFormat).utcOffset(window.timeZoneOffset);
             } else {
               momentDate = moment(valueDate, options.momentFormat);
             }
@@ -2948,7 +3013,7 @@
                 var momentDate = null;
 
                 if (useUTC) {
-                  momentDate = moment.utc(value);
+                  momentDate = moment(value).utcOffset(window.timeZoneOffset);;
                 } else {
                   momentDate = moment(value);
                 }
@@ -2965,7 +3030,7 @@
               if (value) {
                 var momentDate = null;
                 if (useUTC) {
-                  momentDate = moment.utc(datePicker._oldText, options.momentFormat);
+                  momentDate = moment(datePicker._oldText, options.momentFormat).utcOffset(window.timeZoneOffset);;
                 } else {
                   momentDate = moment(datePicker._oldText, options.momentFormat);
                 }
@@ -3193,7 +3258,66 @@
       }
     }
   })
-  
+
+  .directive('cronappRating', function() {
+    'use strict';
+    return {
+      restrict: 'E',
+      require: 'ngModel',
+      link: function(scope, elem, attrs, ngModelCtrl) {
+
+        attrs.theme = $(elem).find('i').attr('xattr-theme');
+        attrs.iconOn = $(elem).find('i').attr('class');
+
+        var $elem = $(elem);
+        var starArray = []
+
+        for (var i=1;i<=5;i++) {
+          starArray.push($(elem).find('i').get(i - 1));
+          $(starArray[i-1]).addClass(attrs.iconOff || "fa fa-star-o");
+        }
+
+        $elem.html("");
+        var stars = [];
+
+        for (var i=1;i<=5;i++) {
+          var clonned = $(starArray[i-1]).clone();
+          $elem.append(clonned);
+
+          clonned.attr("idx", i);
+          clonned.click(function() {
+            scope.$apply(function() {
+              ngModelCtrl.$viewValue = parseInt($(this).attr("idx")); //set new view value
+              ngModelCtrl.$commitViewValue();
+
+            }.bind(this));
+          });
+
+          stars.push(clonned);
+        }
+
+        function changeStars(value) {
+          for (var i=1;i<=5;i++) {
+            stars[i-1].removeClass(attrs.iconOff || 'fa fa-star-o');
+            stars[i-1].removeClass(attrs.iconOn);
+            stars[i-1].removeClass(attrs.theme);
+            if (i <= value) {
+              stars[i-1].addClass(attrs.iconOn);
+              stars[i-1].addClass(attrs.theme);
+            } else {
+              stars[i-1].addClass(attrs.iconOff || 'fa fa-star-o');
+              stars[i-1].addClass(attrs.theme);
+            }
+          }
+          return value;
+        }
+        ngModelCtrl.$parsers.push(changeStars);
+        ngModelCtrl.$formatters.push(changeStars);
+
+      }
+    }
+  })
+
   .directive('cronDynamicMenu', ['$compile', function($compile){
     'use strict';
 
@@ -3201,7 +3325,7 @@
       restrict: 'EA',
       populateItems: function(items) {
         var template = '';
-        
+
         if (items && items != null && Array.isArray(items)) {
           items.forEach(function(item) {
             var security = (item.security && item.security != null) ? ' cronapp-security="' + item.security + '" ' : '';
@@ -3210,7 +3334,7 @@
             var iconClass = (item.iconClass && item.iconClass != null) ? '<i class="'+ item.iconClass +'"></i>' : '';
             var title = '<span>' + item.title + '</span>';
 
-            template = template + '<li'+ hide +'><a href=""' + security + action + '>' + iconClass + title + '</a></li>'; 
+            template = template + '<li'+ hide +'><a href=""' + security + action + '>' + iconClass + title + '</a></li>';
           });
 
           if (template != '') {
@@ -3232,7 +3356,7 @@
             var hide = (menu.hide && menu.hide != null) ? ' ng-hide="' + menu.hide + '" ' : '';
             var iconClass = (menu.iconClass && menu.iconClass != null) ? '<i class="'+ menu.iconClass +'"></i>' : '';
             var title = '<span>' + menu.title + '</span>';
-            
+
             template = template  + '\
               <li class="dropdown component-holder crn-menu-item" data-component="crn-menu-item"' + security + hide + '>\
                 <a href="" ' + action + ' class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">\
@@ -3245,7 +3369,7 @@
         return template;
       },
       link: function(scope, element, attrs) {
-        var TEMPLATE_MAIN = '<ul class="nav navbar-nav" style="float:none"></ul>';  
+        var TEMPLATE_MAIN = '<ul class="nav navbar-nav" style="float:none"></ul>';
         var options = {};
         try {
           options = JSON.parse(attrs.options);
@@ -3337,6 +3461,25 @@
     };
   }])
 
+  .directive('cronChat',  ['$compile', '$translate', function($compile, $translate) {
+    return {
+      restrict: 'E',
+      replace: true,
+      link: function (scope, element, attrs, ngModelCtrl) {
+
+        var options = JSON.parse(attrs.options || "{}");
+        if (options.token && options.urlCronchat) {
+
+          var urlChat = options.urlCronchat.endsWith("/") ? options.urlCronchat : options.urlCronchat + '/';
+          var token = options.token;
+
+          var $templateDyn = $(`<script src="${urlChat}get-chat?token=${token}" type="text/javascript"></script>`);
+          element.html($templateDyn);
+        }
+
+      }
+    };
+  }])
 }(app));
 
 function maskDirectiveAsDate($compile, $translate, $parse) {
@@ -3434,6 +3577,10 @@ function maskDirective($compile, $translate, $parse, attrName) {
 
         var useUTC = type == 'date' || type == 'datetime' || type == 'time';
 
+        if (!window.fixedTimeZone) {
+          useUTC = false;
+        }
+
         if ($element.attr('from-grid')) {
           var openPopup = function() {
             var popup = $(this).offset();
@@ -3468,7 +3615,7 @@ function maskDirective($compile, $translate, $parse, attrName) {
           $element.on('dp.change', function () {
             var momentDate = null;
             if (useUTC) {
-              momentDate = moment.utc($element.val(), mask);
+              momentDate = moment($element.val(), mask).utcOffset(window.timeZoneOffset);
             } else {
               momentDate = moment($element.val(), mask);
             }
@@ -3478,7 +3625,7 @@ function maskDirective($compile, $translate, $parse, attrName) {
             var initialValue = $element.data('initial-value');
             var momentDate = null;
             if (useUTC) {
-              momentDate = moment.utc(initialValue);
+              momentDate = moment(initialValue).utcOffset(window.timeZoneOffset);
             } else {
               momentDate = moment(initialValue);
             }
@@ -3487,18 +3634,19 @@ function maskDirective($compile, $translate, $parse, attrName) {
           }
 
         }
-        else
+        else {
           $element.wrap("<div style=\"position:relative\"></div>");
+        }
         $element.datetimepicker(options);
 
         $element.on('dp.change', function () {
           if ($(this).is(":visible")) {
             $(this).trigger('change');
-            scope.$apply(function () {
+            scope.safeApply(function () {
               var value = $element.val();
               var momentDate = null;
               if (useUTC) {
-                momentDate = moment.utc(value, mask);
+                momentDate = moment(value, mask).utcOffset(window.timeZoneOffset, true);
               } else {
                 momentDate = moment(value, mask);
               }
@@ -3515,9 +3663,9 @@ function maskDirective($compile, $translate, $parse, attrName) {
               var momentDate = null;
 
               if (useUTC) {
-                momentDate = moment.utc(value);
+                momentDate = moment(value).utcOffset(window.timeZoneOffset);
                 if(!momentDate.isValid()){
-                  momentDate = moment.utc(value, mask);
+                  momentDate = moment(value, mask).utcOffset(window.timeZoneOffset);
                 }
               } else {
                 momentDate = moment(value);
@@ -3527,6 +3675,11 @@ function maskDirective($compile, $translate, $parse, attrName) {
               }
 
               return momentDate.format(mask);
+            }
+
+            if(value === null){
+              var dp = $element.datetimepicker(options).data('DateTimePicker');
+              dp.date(null);
             }
 
             return null;
@@ -3539,7 +3692,7 @@ function maskDirective($compile, $translate, $parse, attrName) {
               }
               var momentDate = null;
               if (useUTC) {
-                momentDate = moment.utc(value, mask);
+                momentDate = moment(value, mask).utcOffset(window.timeZoneOffset);
               } else {
                 momentDate = moment(value, mask);
               }
@@ -3627,7 +3780,7 @@ function maskDirective($compile, $translate, $parse, attrName) {
 
         if (ngModelCtrl) {
           ngModelCtrl.$formatters.push(function (value) {
-            if (value != undefined && value != null && value != '') {
+            if (value != undefined && value != null && value !== '') {
               return format(mask, value);
             }
 
@@ -3635,9 +3788,9 @@ function maskDirective($compile, $translate, $parse, attrName) {
           });
 
           ngModelCtrl.$parsers.push(function (value) {
-            if (value != undefined && value != null && value != '') {
+            if (value != undefined && value != null && value !== '') {
               var unmaskedvalue = $element.inputmask('unmaskedvalue');
-              if (unmaskedvalue != '')
+              if (unmaskedvalue !== '')
                 return unmaskedvalue;
             }
 
@@ -3730,7 +3883,7 @@ function parseMaskType(type, $translate) {
   else if (type == "integer") {
     type = $translate.instant('Format.Integer');
     if (type == 'Format.Integer')
-      type = '###,###.';
+      type = '#,##0.####';
   }
 
   else if (type == "week") {
@@ -3742,6 +3895,10 @@ function parseMaskType(type, $translate) {
   }
 
   else if (type == "text") {
+    type = '';
+  }
+
+  else if (type == "string") {
     type = '';
   }
 
@@ -4266,7 +4423,7 @@ app.kendoHelper = {
     if (options) {
       if (!options.dynamic || options.dynamic=='false') {
         valuePrimitive = true;
-		options.dataValueField = options.dataValueField || 'value';
+        options.dataValueField = options.dataValueField || 'value';
         options.dataTextField = options.dataTextField || 'key';
         dataSource.data = (options.staticDataSource == null ? undefined : options.staticDataSource);
         for (i = 0; i < dataSource.data.length; i++) {
@@ -4301,12 +4458,21 @@ app.kendoHelper = {
         return null;
       }
 
-      if (!options.template && options.format) {
-        options.template = "#= useMask(" + options.dataTextField + ",'" + options.format + "','" + getFieldType(options.dataTextField) + "') #";
+      var isValidDateType = function(field) {
+        var dateTypes = ["date", "time", "datetime"];
+        if(dateTypes.indexOf(field) > -1){
+          return field;
+        }
+        return null;
       }
 
-      if (!options.valueTemplate && options.format) {
-        options.valueTemplate = "#= useMask(" + options.dataTextField + ",'" + options.format + "') #";
+      if (!options.customTemplate) {
+        if(options.dataSourceScreen && options.dataSourceScreen.entityDataSource) {
+          if (options.format || (isValidDateType(getFieldType(options.dataTextField)))) {
+            options.template = "#= useMask(" + options.dataTextField + ",'" + options.format + "','" + getFieldType(options.dataTextField) + "') #";
+            options.valueTemplate = "#= useMask(" + options.dataTextField + ",'" + options.format + "','" + getFieldType(options.dataTextField) + "') #";
+          }
+        }
       }
 
       var config = {
@@ -4319,10 +4485,18 @@ app.kendoHelper = {
         footerTemplate: (options.footerTemplate == null ? undefined : options.footerTemplate),
         filter: (options.filter == null ? undefined : options.filter),
         valuePrimitive : valuePrimitive,
-        optionLabel : (options.optionLabel == null || options.optionLabel == "" ? " " : options.optionLabel),
         valueTemplate : (options.valueTemplate == null ? undefined : options.valueTemplate),
         suggest: true
       };
+
+      if (options.optionLabel) {
+        options.optionLabelText = options.optionLabel;
+        options.optionLabelValue = '';
+      }
+
+      config.optionLabel = {};
+      config.optionLabel[config.dataTextField] = options.optionLabelText === undefined ? "" : options.optionLabelText;
+      config.optionLabel[config.dataValueField] = options.optionLabelValue === undefined ? null : options.optionLabelValue;
     }
 
     return config;
@@ -4394,6 +4568,10 @@ app.kendoHelper = {
   buildKendoMomentPicker : function($element, options, scope, ngModelCtrl) {
     var useUTC = options.type == 'date' || options.type == 'datetime' || options.type == 'time';
 
+    if (!window.fixedTimeZone) {
+      useUTC = false;
+    }
+
     if (!$element.attr('from-grid')) {
       var onChange = function() {
         var value = $element.val();
@@ -4404,7 +4582,7 @@ app.kendoHelper = {
           var momentDate = null;
 
           if (useUTC) {
-            momentDate = moment.utc(value, options.momentFormat);
+            momentDate = moment(value, options.momentFormat).utcOffset(window.timeZoneOffset);
           } else {
             momentDate = moment(value, options.momentFormat);
           }
@@ -4510,18 +4688,18 @@ window.useMask = function(value, format, type) {
 
   if (value != null && value != undefined) {
     if (value instanceof Date) {
-      resolvedValue = '"'+value.toISOString()+'"';
-    }
 
+      var momentDate = moment(value).utcOffset(window.timeZoneOffset);
+
+      resolvedValue = '"'+momentDate.format()+'"';
+    }
     else if (typeof value == 'number') {
       resolvedValue = value;
     }
-
     else {
       resolvedValue = '"'+value+'"';
     }
-
-    mask = '{{ ' + resolvedValue + '  | mask:"' + resolvedType + '"}}';
+    mask = '{{ ' + resolvedValue + '  | mask:"' + resolvedType + '":"'+type+'"}}';
   }
 
   return mask;
